@@ -18,6 +18,16 @@ function csv(name, rows) {
   a.download = name; a.click();
 }
 
+async function uploadImage(file, id) {
+  if (!file.type.startsWith('image/')) { alert('Please choose an image file (JPG, PNG or WebP).'); return null; }
+  if (file.size > 2 * 1024 * 1024) { alert('Image must be smaller than 2 MB.'); return null; }
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const path = `${id}-${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('product-images').upload(path, file, { cacheControl: '31536000' });
+  if (error) { alert(error.message); return null; }
+  return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+}
+
 export default function AdminPanel({ user, onExit }) {
   const [tab, setTab] = useState('Dashboard');
   const [d, setD] = useState({ orders: [], products: [], coupons: [], profiles: [] });
@@ -124,19 +134,40 @@ function Refunds({ orders, load }) {
 }
 
 function Products({ products, run }) {
-  const [n, setN] = useState({ id: '', name: '', category: '', price: '', mrp: '', stock: '' });
+  const empty = { id: '', name: '', category: '', price: '', mrp: '', stock: '' };
+  const [n, setN] = useState(empty);
+  const [file, setFile] = useState(null);
+  const [fk, setFk] = useState(0);
+  const [busy, setBusy] = useState('');
   const upd = (id, patch) => run(supabase.from('products').update(patch).eq('id', id));
   const add = async () => {
     if (!n.id || !n.name || !n.price) return alert('ID, name and price are required');
-    await run(supabase.from('products').insert({ ...n, price: +n.price, mrp: +n.mrp || +n.price, stock: +n.stock || 0 }));
-    setN({ id: '', name: '', category: '', price: '', mrp: '', stock: '' });
+    setBusy('new');
+    const image_url = file ? await uploadImage(file, n.id) : null;
+    if (file && !image_url) return setBusy('');
+    await run(supabase.from('products').insert({ ...n, price: +n.price, mrp: +n.mrp || +n.price, stock: +n.stock || 0, image_url }));
+    setN(empty); setFile(null); setFk(fk + 1); setBusy('');
+  };
+  const replace = async (p, f) => {
+    setBusy(p.id);
+    const url = await uploadImage(f, p.id);
+    if (url) await upd(p.id, { image_url: url });
+    setBusy('');
   };
   return <>
     <div className="card form" style={{ marginBottom: 12 }}><h3>Add product</h3><div className="row">
       {Object.keys(n).map((k) => <input key={k} placeholder={k} value={n[k]} onChange={(e) => setN({ ...n, [k]: e.target.value })} />)}
-      <button className="btn" onClick={add}>Add</button></div></div>
-    <Table head={['ID', 'Name', 'Price', 'Stock', 'Active', '']}>{products.map((p) => (
-      <tr key={p.id}><td>{p.id}</td><td>{p.name}</td>
+      <input key={fk} type="file" accept="image/*" onChange={(e) => setFile(e.target.files[0] || null)} />
+      <button className="btn" disabled={busy === 'new'} onClick={add}>{busy === 'new' ? 'Saving…' : 'Add'}</button></div>
+      <p className="muted">Photo is optional: JPG, PNG or WebP, under 2 MB. Square photos look best.</p></div>
+    <Table head={['Image', 'ID', 'Name', 'Price', 'Stock', 'Active', '']}>{products.map((p) => (
+      <tr key={p.id}>
+        <td>
+          {p.image_url ? <img src={p.image_url} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, display: 'block', marginBottom: 4 }} /> : <span className="muted">No photo</span>}
+          <input type="file" accept="image/*" style={{ width: 170 }} disabled={busy === p.id} onChange={(e) => e.target.files[0] && replace(p, e.target.files[0])} />
+          {p.image_url && <button className="btn sm ghost" onClick={() => upd(p.id, { image_url: null })}>Remove photo</button>}
+        </td>
+        <td>{p.id}</td><td>{p.name}</td>
         <td><input style={{ width: 80 }} defaultValue={p.price} onBlur={(e) => +e.target.value !== p.price && upd(p.id, { price: +e.target.value })} /></td>
         <td><input style={{ width: 70 }} defaultValue={p.stock} onBlur={(e) => +e.target.value !== p.stock && upd(p.id, { stock: +e.target.value })} /></td>
         <td><input type="checkbox" checked={p.active} onChange={(e) => upd(p.id, { active: e.target.checked })} /></td>
@@ -184,3 +215,4 @@ function Coupons({ coupons, run }) {
         <td><button className="btn sm ghost" onClick={() => run(supabase.from('coupons').delete().eq('code', c.code))}>Delete</button></td></tr>))}</Table>
   </>;
 }
+

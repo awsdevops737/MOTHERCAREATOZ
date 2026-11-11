@@ -42,6 +42,7 @@ const withDefaults = (row) => {
     ...sample,
     ...row,
     mrp: row.mrp || row.price,
+    image: row.image_url || sample.image,
   };
 };
 
@@ -258,4 +259,5 @@ export default function App() {
     </div>
   );
 }
+
 

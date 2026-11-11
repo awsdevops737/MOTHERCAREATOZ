@@ -34,7 +34,7 @@ export default function CartPage({ items, totals, coupon, onQty, onApply, onChec
         <div>
           {items.map(({ product: p, qty }) => (
             <div className="cart-row" key={p.id}>
-              <div className="cart-thumb" aria-hidden="true">{p.emoji || "🧸"}</div>
+              <div className="cart-thumb" aria-hidden="true">{p.image ? <img src={p.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }} /> : p.emoji || "🧸"}</div>
               <div className="grow">
                 <strong>{p.name}</strong>
                 <p className="muted small">{formatPrice(p.price)} each</p>
@@ -61,3 +61,4 @@ export default function CartPage({ items, totals, coupon, onQty, onApply, onChec
     </section>
   );
 }
+
