@@ -9,10 +9,11 @@ export async function getProfile() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-  return { id: user.id, email: user.email, name: data?.name, role: data?.role || 'customer' };
+  return { id: user.id, email: user.email, name: data?.name || user.user_metadata?.name || (user.email || '').split('@')[0], role: data?.role || 'customer' };
 }
 
 export const sendOtp = (email) => supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
 export const verifyOtp = (email, token) => supabase.auth.verifyOtp({ email, token, type: 'email' });
 export const resetPassword = (email) => supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
 export const updatePassword = (password) => supabase.auth.updateUser({ password });
+

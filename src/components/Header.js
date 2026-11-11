@@ -25,7 +25,7 @@ export default function Header({ page, go, cartCount, user, onSignIn, onLogout }
         </button>
         {user ? (
           <>
-            <button className="btn ghost" onClick={() => go("account")}>{user.name.split(" ")[0]}</button>
+            <button className="btn ghost" onClick={() => go("account")}>{(user.name || user.email || "Account").split(" ")[0]}</button>
             <button className="btn ghost" onClick={onLogout}>Sign out</button>
           </>
         ) : (
@@ -35,3 +35,4 @@ export default function Header({ page, go, cartCount, user, onSignIn, onLogout }
     </header>
   );
 }
+
