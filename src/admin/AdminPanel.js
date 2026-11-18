@@ -18,14 +18,33 @@ function csv(name, rows) {
   a.download = name; a.click();
 }
 
-async function uploadImage(file, id) {
-  if (!file.type.startsWith('image/')) { alert('Please choose an image file (JPG, PNG or WebP).'); return null; }
-  if (file.size > 2 * 1024 * 1024) { alert('Image must be smaller than 2 MB.'); return null; }
+async function storeImage(file, id) {
+  if (!file.type.startsWith('image/')) return { error: 'not an image file (use JPG, PNG or WebP)' };
+  if (file.size > 2 * 1024 * 1024) return { error: 'larger than 2 MB' };
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
   const path = `${id}-${Date.now()}.${ext}`;
   const { error } = await supabase.storage.from('product-images').upload(path, file, { cacheControl: '31536000' });
-  if (error) { alert(error.message); return null; }
-  return supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+  if (error) return { error: error.message };
+  return { url: supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl };
+}
+async function uploadImage(file, id) {
+  const r = await storeImage(file, id);
+  if (r.error) { alert('Image upload failed: ' + r.error); return null; }
+  return r.url;
+}
+
+function parseCSV(text) {
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cur); cur = ''; if (row.some((x) => x.trim())) rows.push(row); row = []; }
+    else cur += c;
+  }
+  row.push(cur); if (row.some((x) => x.trim())) rows.push(row);
+  return rows;
 }
 
 export default function AdminPanel({ user, onExit }) {
@@ -133,6 +152,76 @@ function Refunds({ orders, load }) {
   </>;
 }
 
+const CATS = ['Diapers', 'Feeding', 'Bath & Care', 'Clothing', 'Toys', 'Daily Essentials'];
+
+function BulkUpload({ products, run }) {
+  const [csvFile, setCsvFile] = useState(null);
+  const [imgs, setImgs] = useState([]);
+  const [msg, setMsg] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const go = async () => {
+    if (!csvFile) return alert('Choose your CSV file first.');
+    setBusy(true); setMsg('Reading CSV…');
+    const [head, ...body] = parseCSV((await csvFile.text()).replace(/^\uFEFF/, ''));
+    const cols = (head || []).map((h) => h.trim().toLowerCase());
+    const get = (r, k) => (r[cols.indexOf(k)] || '').trim();
+    const files = {}; imgs.forEach((f) => { files[f.name.toLowerCase()] = f; });
+    const rows = [], notes = [], seen = new Set();
+    body.forEach((r, i) => {
+      const n = i + 2, id = get(r, 'id'), name = get(r, 'name'), price = +get(r, 'price');
+      const category = CATS.find((c) => c.toLowerCase() === get(r, 'category').toLowerCase());
+      if (!id || !name || !(price > 0)) return notes.push(`Row ${n} skipped: id, name and a price above 0 are required`);
+      if (!category) return notes.push(`Row ${n} skipped: category must be one of ${CATS.join(', ')}`);
+      if (seen.has(id)) return notes.push(`Row ${n} skipped: id ${id} appears twice in the CSV`);
+      seen.add(id);
+      rows.push({ id, name, category, price, mrp: +get(r, 'mrp') || price, stock: +get(r, 'stock') || 0, image: get(r, 'image') });
+    });
+    const out = [];
+    for (let i = 0; i < rows.length; i++) {
+      const { image, ...p } = rows[i];
+      const old = products.find((x) => x.id === p.id);
+      let image_url = old?.image_url || null;
+      if (/^https?:\/\//i.test(image)) image_url = image;
+      else if (image) {
+        const f = files[image.toLowerCase()];
+        if (!f) notes.push(`${p.id}: photo "${image}" was not selected, so the product was saved without a new photo`);
+        else {
+          setMsg(`Uploading photo ${i + 1} of ${rows.length}…`);
+          const r = await storeImage(f, p.id);
+          if (r.error) notes.push(`${p.id}: photo "${image}" failed (${r.error})`); else image_url = r.url;
+        }
+      }
+      out.push({ ...p, image_url });
+    }
+    let saved = 0;
+    for (let i = 0; i < out.length; i += 50) {
+      setMsg(`Saving products ${i + 1}–${Math.min(i + 50, out.length)}…`);
+      const { error } = await supabase.from('products').upsert(out.slice(i, i + 50), { onConflict: 'id' });
+      if (error) { notes.push('Save failed: ' + error.message); break; }
+      saved += Math.min(50, out.length - i);
+    }
+    setMsg(`Done: ${saved} product(s) saved.` + (notes.length ? '\n' + notes.slice(0, 15).join('\n') + (notes.length > 15 ? `\n…and ${notes.length - 15} more` : '') : ''));
+    setBusy(false);
+    await run(Promise.resolve({ error: null }));
+  };
+
+  return (
+    <div className="card form" style={{ marginBottom: 12 }}>
+      <h3>Bulk upload (CSV + photos)</h3>
+      <p className="muted">CSV columns: id, name, category, price, mrp, stock, image. The image column holds the photo file name (like p13.jpg) or a full https link. An id that already exists is updated.</p>
+      <div className="row">
+        <button className="btn sm ghost" onClick={() => csv('products-template.csv', [{ id: 'p13', name: 'Sample Product', category: 'Toys', price: 299, mrp: 399, stock: 20, image: 'p13.jpg' }])}>Download CSV template</button>
+        <label>1. CSV file <input type="file" accept=".csv,text/csv" onChange={(e) => setCsvFile(e.target.files[0] || null)} /></label>
+        <label>2. Photos (select many) <input type="file" accept="image/*" multiple onChange={(e) => setImgs([...e.target.files])} /></label>
+        <button className="btn" disabled={busy} onClick={go}>{busy ? 'Working…' : 'Upload all'}</button>
+      </div>
+      {imgs.length > 0 && <p className="muted">{imgs.length} photo(s) selected</p>}
+      {msg && <div style={{ whiteSpace: 'pre-wrap', marginTop: 8 }}>{msg}</div>}
+    </div>
+  );
+}
+
 function Products({ products, run }) {
   const empty = { id: '', name: '', category: '', price: '', mrp: '', stock: '' };
   const [n, setN] = useState(empty);
@@ -155,6 +244,7 @@ function Products({ products, run }) {
     setBusy('');
   };
   return <>
+    <BulkUpload products={products} run={run} />
     <div className="card form" style={{ marginBottom: 12 }}><h3>Add product</h3><div className="row">
       {Object.keys(n).map((k) => <input key={k} placeholder={k} value={n[k]} onChange={(e) => setN({ ...n, [k]: e.target.value })} />)}
       <input key={fk} type="file" accept="image/*" onChange={(e) => setFile(e.target.files[0] || null)} />
