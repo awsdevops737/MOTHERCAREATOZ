@@ -11,6 +11,10 @@ import AuthModal from "./components/AuthModal";
 import Offers from "./components/Offers";
 import Contact from "./components/Contact";
 import Account from "./components/Account";
+<<<<<<< HEAD
+=======
+import Policies, { BIZ } from "./components/Policies";
+>>>>>>> origin/main
 import AdminPanel from "./admin/AdminPanel";
 import { supabase, signUp, signIn, signOut, getProfile } from "./lib/supabase";
 import { payNow } from "./lib/pay";
@@ -29,6 +33,13 @@ const save = (key, value) => {
   } catch {}
 };
 
+<<<<<<< HEAD
+=======
+// Pages that have their own web address, so they can be linked and reviewed directly.
+const PATHS = { contact: "/contact", terms: "/terms", privacy: "/privacy", refunds: "/refund-policy", shipping: "/shipping-policy" };
+const pageFromPath = () => Object.keys(PATHS).find((k) => PATHS[k] === window.location.pathname.replace(/\/$/, "")) || "home";
+
+>>>>>>> origin/main
 // Database rows only hold id, name, category, price, mrp and stock.
 // Fill in the display fields your components expect (emoji, rating, brand, age, sold).
 const withDefaults = (row) => {
@@ -47,7 +58,11 @@ const withDefaults = (row) => {
 };
 
 export default function App() {
+<<<<<<< HEAD
   const [page, setPage] = useState("home");
+=======
+  const [page, setPage] = useState(pageFromPath);
+>>>>>>> origin/main
   const [category, setCategory] = useState("All");
   const [products, setProducts] = useState(SAMPLE_PRODUCTS);
   const [cart, setCart] = useState(() => load("mc_cart", {}));
@@ -65,7 +80,19 @@ export default function App() {
     setTimeout(() => setToast(""), 2200);
   };
 
+<<<<<<< HEAD
   const go = (p) => {
+=======
+  useEffect(() => {
+    const onBack = () => setPage(pageFromPath());
+    window.addEventListener("popstate", onBack);
+    return () => window.removeEventListener("popstate", onBack);
+  }, []);
+
+  const go = (p) => {
+    const path = PATHS[p] || "/";
+    if (window.location.pathname !== path) window.history.pushState({}, "", path);
+>>>>>>> origin/main
     setPage(p);
     window.scrollTo({ top: 0 });
   };
@@ -233,7 +260,12 @@ export default function App() {
         {page === "catalog" && <Catalog products={products} category={category} setCategory={setCategory} onAdd={addToCart} />}
         {page === "best" && <Best products={products} onAdd={addToCart} />}
         {page === "offers" && <Offers onApply={(c) => { applyCoupon(c); go("cart"); }} showToast={showToast} />}
+<<<<<<< HEAD
         {page === "contact" && <Contact />}
+=======
+        {page === "contact" && <Contact go={go} />}
+        {["terms", "privacy", "refunds", "shipping"].includes(page) && <Policies kind={page} go={go} />}
+>>>>>>> origin/main
         {page === "cart" && (
           <CartPage items={cartItems} totals={totals} coupon={coupon} onQty={changeQty} onApply={applyCoupon} onCheckout={goCheckout} go={go} />
         )}
@@ -246,10 +278,22 @@ export default function App() {
         <div>
           <strong>MotherCare</strong>
           <p>Baby products and daily essentials, delivered with care.</p>
+<<<<<<< HEAD
         </div>
         <div className="footer-links">
           <button onClick={() => go("offers")}>Offers</button>
           <button onClick={() => go("contact")}>Contact us</button>
+=======
+          <p className="small">{BIZ.address} · {BIZ.phone} · {BIZ.email}</p>
+        </div>
+        <div className="footer-links" style={{ flexWrap: "wrap" }}>
+          <button onClick={() => go("offers")}>Offers</button>
+          <button onClick={() => go("contact")}>Contact us</button>
+          <button onClick={() => go("terms")}>Terms</button>
+          <button onClick={() => go("privacy")}>Privacy</button>
+          <button onClick={() => go("refunds")}>Refunds</button>
+          <button onClick={() => go("shipping")}>Shipping</button>
+>>>>>>> origin/main
           {user?.role === "admin" && <button onClick={() => go("admin")}>Admin</button>}
         </div>
       </footer>
@@ -262,3 +306,7 @@ export default function App() {
   );
 }
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main

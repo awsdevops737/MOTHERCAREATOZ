@@ -21,7 +21,10 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+<<<<<<< HEAD
 
 # secrets
 .env
 .env.local
+=======
+>>>>>>> origin/main
