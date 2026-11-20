@@ -165,11 +165,7 @@ tr.bad td { background: #fdeceb; }
 .center-box { text-align: center; max-width: 480px; margin: 2rem auto; }
 .success-mark { width: 72px; height: 72px; border-radius: 50%; background: var(--green); color: #fff; font-size: 2.2rem; display: grid; place-items: center; margin: 0 auto 1rem; }
 
-<<<<<<< HEAD
 .footer { background: var(--surface); border-top: 1px solid var(--line); padding: 1.5rem 1rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; max-width: 100%; }
-=======
-.footer { position: sticky; bottom: 0; z-index: 10; background: var(--surface); border-top: 1px solid var(--line); padding: 1.5rem 1rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; max-width: 100%; }
->>>>>>> origin/main
 .footer p { color: var(--muted); margin: 0; }
 .footer-links { display: flex; gap: 1rem; align-items: center; }
 .footer-links button { background: none; border: 0; color: var(--primary); font-weight: 700; }
@@ -187,10 +183,7 @@ tr.bad td { background: #fdeceb; }
   html { scroll-behavior: auto; }
   .btn { transition: none; }
 }
-<<<<<<< HEAD
 
 .pw { display: flex; gap: .5rem; align-items: center; }
 .pw input { margin-top: .25rem; }
 .pw .link { margin-top: .25rem; white-space: nowrap; }
-=======
->>>>>>> origin/main
