@@ -2,8 +2,10 @@ import { useState } from "react";
 import { formatPrice } from "../data";
 import { Summary } from "./CartPage";
 
+const STATES = ["Andaman and Nicobar Islands","Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chandigarh","Chhattisgarh","Dadra and Nagar Haveli and Daman and Diu","Delhi","Goa","Gujarat","Haryana","Himachal Pradesh","Jammu and Kashmir","Jharkhand","Karnataka","Kerala","Ladakh","Lakshadweep","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Puducherry","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal"];
+
 export default function Checkout({ user, totals, items, onPay, go }) {
-  const [form, setForm] = useState({ name: user?.name || "", phone: "", line: "", city: "", pincode: "" });
+  const [form, setForm] = useState({ name: user?.name || "", phone: "", line: "", city: "", state: "", pincode: "" });
   const [status, setStatus] = useState("form"); // form | processing | success
   const [done, setDone] = useState(null);
   const [error, setError] = useState("");
@@ -11,8 +13,8 @@ export default function Checkout({ user, totals, items, onPay, go }) {
 
   const pay = async (e) => {
     e.preventDefault();
-    if (!form.name || !/^\d{10}$/.test(form.phone) || !form.line || !form.city || !/^\d{6}$/.test(form.pincode))
-      return setError("Fill in your name, a 10-digit phone number, address, city and a 6-digit pincode.");
+    if (!form.name || !/^\d{10}$/.test(form.phone) || !form.line || !form.city || !form.state || !/^\d{6}$/.test(form.pincode))
+      return setError("Fill in your name, a 10-digit phone number, address, city, state and a 6-digit pincode.");
     setError("");
     setStatus("processing");
     const amount = totals.total;
@@ -50,6 +52,7 @@ export default function Checkout({ user, totals, items, onPay, go }) {
           <label>Phone<input inputMode="numeric" maxLength={10} value={form.phone} onChange={set("phone")} /></label>
           <label>Address<textarea rows={3} value={form.line} onChange={set("line")} /></label>
           <label>City<input value={form.city} onChange={set("city")} /></label>
+          <label>State<select value={form.state} onChange={set("state")}><option value="">Select state</option>{STATES.map((s) => <option key={s}>{s}</option>)}</select></label>
           <label>Pincode<input inputMode="numeric" maxLength={6} value={form.pincode} onChange={set("pincode")} /></label>
           <p className="muted small">You choose UPI, card or net banking on the secure Razorpay window after clicking Pay.</p>
         </div>

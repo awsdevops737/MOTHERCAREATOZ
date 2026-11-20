@@ -305,4 +305,3 @@ function Coupons({ coupons, run }) {
         <td><button className="btn sm ghost" onClick={() => run(supabase.from('coupons').delete().eq('code', c.code))}>Delete</button></td></tr>))}</Table>
   </>;
 }
-

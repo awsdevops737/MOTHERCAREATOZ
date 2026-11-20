@@ -10,7 +10,10 @@ const loadScript = () => new Promise((ok, fail) => {
 
 async function call(path, body, token) {
   const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
-  const j = await r.json();
+  const text = await r.text();
+  let j;
+  try { j = JSON.parse(text); }
+  catch { throw new Error(r.status === 404 ? 'Payment service not found: the /api folder is not deployed.' : `Payment service error (${r.status}). Please try again.`); }
   if (!r.ok) throw new Error(j.error || 'Something went wrong');
   return j;
 }

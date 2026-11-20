@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
   const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
   const token = (req.headers.authorization || '').replace('Bearer ', '');
@@ -24,4 +24,13 @@ module.exports = async (req, res) => {
     }
   }
   res.json({ ok: true, orderId: order?.id });
+};
+
+// Always answer with JSON, even when something is misconfigured or crashes.
+const NEED = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'RAZORPAY_KEY_SECRET'];
+module.exports = async (req, res) => {
+  const missing = NEED.filter((k) => !process.env[k]);
+  if (missing.length) return res.status(500).json({ error: 'Server setup incomplete: add ' + missing.join(', ') + ' in Vercel Environment Variables, then redeploy.' });
+  try { await handler(req, res); }
+  catch (e) { console.error(e); if (!res.headersSent) res.status(500).json({ error: 'Payment server error. Please try again.' }); }
 };

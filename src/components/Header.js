@@ -35,4 +35,3 @@ export default function Header({ page, go, cartCount, user, onSignIn, onLogout }
     </header>
   );
 }
-

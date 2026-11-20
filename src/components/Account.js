@@ -17,6 +17,7 @@ export default function Account({ user, orders }) {
             <p><strong>{o.id}</strong> · {o.date}</p>
             <p className="muted small">{o.items.map((i) => `${i.name} × ${i.qty}`).join(", ")}</p>
             <p>{formatPrice(o.totals.total)} · {o.status} · Payment: {o.paymentStatus}</p>
+            {o.awb && <p className="small">Track your parcel: <a href={`https://shiprocket.co/tracking/${o.awb}`} target="_blank" rel="noreferrer">{o.courier} · {o.awb}</a></p>}
           </div>
         ))
       )}

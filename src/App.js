@@ -100,6 +100,8 @@ export default function App() {
         coupon: o.coupon,
         status: o.status,
         paymentStatus: o.payment_status,
+        awb: o.awb_code,
+        courier: o.courier_name,
       }))
     );
   }, [user]);
@@ -259,5 +261,4 @@ export default function App() {
     </div>
   );
 }
-
 

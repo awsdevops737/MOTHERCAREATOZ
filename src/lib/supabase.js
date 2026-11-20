@@ -16,4 +16,3 @@ export const sendOtp = (email) => supabase.auth.signInWithOtp({ email, options: 
 export const verifyOtp = (email, token) => supabase.auth.verifyOtp({ email, token, type: 'email' });
 export const resetPassword = (email) => supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
 export const updatePassword = (password) => supabase.auth.updateUser({ password });
-

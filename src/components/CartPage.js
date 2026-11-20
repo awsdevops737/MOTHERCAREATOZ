@@ -61,4 +61,3 @@ export default function CartPage({ items, totals, coupon, onQty, onApply, onChec
     </section>
   );
 }
-
