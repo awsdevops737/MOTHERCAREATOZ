@@ -16,13 +16,24 @@ async function login(force) {
   return j.token;
 }
 
+// Turns whatever Shiprocket sent back into a readable message.
+function reason(j) {
+  if (!j) return 'no response';
+  const parts = [];
+  if (j.message) parts.push(j.message);
+  if (j.errors) parts.push(JSON.stringify(j.errors));
+  return parts.length ? parts.join(' | ') : JSON.stringify(j).slice(0, 400);
+}
+
 async function sr(path, body) {
   for (let attempt = 0; attempt < 2; attempt++) {
     const token = await login(attempt === 1);
     const r = await fetch(BASE + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
     if (r.status === 401 && attempt === 0) continue;
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.message || (j.errors ? JSON.stringify(j.errors) : `Shiprocket error ${r.status}`));
+    if (!r.ok) throw new Error(reason(j) || `Shiprocket error ${r.status}`);
+    // Shiprocket sometimes answers HTTP 200 with an error code inside the body.
+    if (j && Number(j.status_code) >= 400) throw new Error(reason(j));
     return j;
   }
 }
@@ -43,6 +54,11 @@ const handler = async (req, res) => {
   const a = o.address || {};
   if (!a.state) return res.status(400).json({ error: 'This order has no state in its address (it was placed before the state field was added). Edit the address in Shiprocket manually.' });
 
+  const phone = String(a.phone || '').replace(/\D/g, '').slice(-10);
+  const pincode = String(a.pincode || '').replace(/\D/g, '').slice(0, 6);
+  if (phone.length !== 10) return res.status(400).json({ error: 'Customer phone number must be 10 digits (found: ' + (a.phone || 'none') + ')' });
+  if (pincode.length !== 6) return res.status(400).json({ error: 'Customer pincode must be 6 digits (found: ' + (a.pincode || 'none') + ')' });
+
   const { data: prof } = await sb.from('profiles').select('email').eq('id', o.user_id).single();
   const warnings = [];
   let shipmentId = o.shiprocket_shipment_id;
@@ -54,16 +70,16 @@ const handler = async (req, res) => {
       order_date: new Date(o.created_at).toISOString().slice(0, 16).replace('T', ' '),
       pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || 'Primary',
       billing_customer_name: first, billing_last_name: rest.join(' '),
-      billing_address: a.line, billing_city: a.city, billing_pincode: a.pincode, billing_state: a.state, billing_country: 'India',
-      billing_email: prof?.email || '', billing_phone: a.phone,
+      billing_address: a.line, billing_city: a.city, billing_pincode: pincode, billing_state: a.state, billing_country: 'India',
+      billing_email: prof?.email || 'noreply@mothercareatoz.in', billing_phone: phone,
       shipping_is_billing: true,
-      order_items: o.items.map((i) => ({ name: i.name, sku: i.id, units: i.qty, selling_price: i.price })),
-      payment_method: 'Prepaid', sub_total: o.total,
+      order_items: o.items.map((i) => ({ name: i.name, sku: String(i.id), units: Number(i.qty), selling_price: Number(i.price) })),
+      payment_method: 'Prepaid', sub_total: Number(o.total),
       length: +process.env.SHIPROCKET_LENGTH || 10, breadth: +process.env.SHIPROCKET_BREADTH || 10,
       height: +process.env.SHIPROCKET_HEIGHT || 10, weight: +process.env.SHIPROCKET_WEIGHT || 0.5,
     });
     shipmentId = created.shipment_id;
-    if (!shipmentId) throw new Error('Shiprocket did not return a shipment id');
+    if (!shipmentId) throw new Error('Shiprocket did not return a shipment id: ' + reason(created));
     await sb.from('orders').update({ shiprocket_order_id: String(created.order_id), shiprocket_shipment_id: String(shipmentId) }).eq('id', o.id);
   }
 
@@ -95,3 +111,4 @@ module.exports = async (req, res) => {
   try { await handler(req, res); }
   catch (e) { console.error(e); if (!res.headersSent) res.status(500).json({ error: e.message || 'Shipping error' }); }
 };
+
