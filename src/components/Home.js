@@ -1,5 +1,52 @@
+import { useEffect } from "react";
 import { CATEGORIES, CATEGORY_EMOJI, OFFERS } from "../data";
 import ProductCard from "./ProductCard";
+
+/* ---------- Google reviews settings (edit these two/three values) ---------- */
+
+// 1) Your Google review link: Google Business Profile > "Ask for reviews" > copy link.
+const GOOGLE_REVIEW_LINK = "https://g.page/r/CR6J_mQKy6BvEBM/review";
+
+// 2) OPTIONAL reviews widget (Elfsight, Trustindex, etc.).
+//    Leave both empty to show only the "Review us on Google" button.
+//    WIDGET_SCRIPT = the script URL from the provider's embed code
+//    WIDGET_CLASS  = the class on the provider's <div> (for Elfsight it looks like "elfsight-app-xxxxxxxx")
+const WIDGET_SCRIPT = "";
+const WIDGET_CLASS = "";
+
+function GoogleReviews() {
+  useEffect(() => {
+    if (!WIDGET_SCRIPT) return;
+    if (document.querySelector(`script[src="${WIDGET_SCRIPT}"]`)) return; // load once
+    const s = document.createElement("script");
+    s.src = WIDGET_SCRIPT;
+    s.async = true;
+    document.body.appendChild(s);
+  }, []);
+
+const hasLink = GOOGLE_REVIEW_LINK && !GOOGLE_REVIEW_LINK.startsWith("PASTE_");
+  if (!hasLink && !WIDGET_SCRIPT) return null; // nothing configured yet, show nothing
+
+  return (
+    <section>
+      <h2>What our customers say</h2>
+      {WIDGET_SCRIPT && WIDGET_CLASS && <div className={WIDGET_CLASS} />}
+      {hasLink && (
+        <div className="panel center">
+          <p className="muted">Bought from us? Tell other parents what you think.</p>
+          <a
+            className="btn ghost"
+            href={GOOGLE_REVIEW_LINK}
+            target="_blank"
+            rel="noreferrer"
+          >
+            ⭐ Review us on Google
+          </a>
+        </div>
+      )}
+    </section>
+  );
+}
 
 export default function Home({ products, go, onCategory, onAdd }) {
   const best = [...products].sort((a, b) => b.sold - a.sold).slice(0, 4);
@@ -39,6 +86,8 @@ export default function Home({ products, go, onCategory, onAdd }) {
         </div>
       </section>
 
+      <GoogleReviews />
+
       <section className="offer-strip">
         {OFFERS.map((o) => (
           <div key={o.code} className="offer-chip">
@@ -50,3 +99,4 @@ export default function Home({ products, go, onCategory, onAdd }) {
     </>
   );
 }
+
